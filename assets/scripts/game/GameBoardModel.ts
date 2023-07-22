@@ -20,7 +20,9 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
     #gridModels: GameBoardGridModel[] = [];
 
     #boardContentSize: Size = new Size();
-    #size: number = 4;
+    #size: number = 7;
+
+    #length: number = 0;
 
     get generator(): GameLogicGenerator {
         return this.#generator;
@@ -52,6 +54,17 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         this.#generator = new GameLogicGenerator();
     }
 
+    #mapGenerator(size: number) {
+        let map: number[][] = [];
+        range(0, size).forEach(y => {
+            map.push([]);
+            range(0, size).forEach(x => {
+                map[y][x] = Math.random();
+            });
+        });
+        return map;
+    }
+
     initBoardGridInfos(boardContentSize: Size, size: number, insets: number) {
         this.#boardContentSize.set(boardContentSize);
         this.#size = size;
@@ -59,24 +72,28 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
 
         let gridSide = (boardContentSize.width - (size + 1) * insets) / size;
         let initPoint = boardContentSize.width / 2;
+        let map = this.#mapGenerator(size);
         range(0, size).forEach(y => {
             range(0, size).forEach(x => {
-                let xPoint = -initPoint + insets + x * (insets + gridSide);
-                let yPoint = -initPoint + insets + y * (insets + gridSide);
-                let model = this.gridModelAt(x, y);
-                if (!model) {
-                    model = new GameBoardGridModel();
-                    this.#gridModels.push(model);
+                if (map[x][y] < 0.5) {
+                    let xPoint = -initPoint + insets + x * (insets + gridSide);
+                    let yPoint = -initPoint + insets + y * (insets + gridSide);
+                    let model = this.gridModelAt(x, y);
+                    if (!model) {
+                        model = new GameBoardGridModel();
+                        this.#gridModels.push(model);
+                    }
+                    model.x = x;
+                    model.y = y;
+                    model.rect.set(xPoint, yPoint, gridSide, gridSide);
                 }
-                model.x = x;
-                model.y = y;
-                model.rect.set(xPoint, yPoint, gridSide, gridSide);
             });
         });
+        this.#length = this.#gridModels.length;
     }
 
     #clearIfSizeNotMatch() {
-        if (this.#size ** 2 != this.#gridModels.length) {
+        if (this.#length != this.#gridModels.length) {
             this.#gridModels = [];
         }
     }
@@ -99,7 +116,15 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
     }
 
     transformVectorToIndex(x: number, y: number): number {
-        return this.isInside(x, y) ? y * this.#size + x : NaN;
+        let ind = -1;
+        for (let index = 0; index < this.gridModels.length; ++index) {
+            let grid = this.#gridModels[index];
+            if (grid.x === x && grid.y === y) {
+                ind = index;
+            }
+        }
+        return ind < 0 ? NaN : ind
+        //return this.isInside(x, y) ? y * this.#size + x : NaN;
     }
 
     next(): BoardGenerateElement {
@@ -117,11 +142,43 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         };
     }
 
+    #checkConnectivity(grid1: GameBoardGridModel, grid2: GameBoardGridModel): boolean {
+        let dir = 0; //0 for x same, and 1 for y same
+        if (grid1.y == grid2.y) {
+            dir = 1;
+        }
+        let conn = true;
+        if (dir == 0) {
+            let start = Math.min(grid1.y, grid2.y);
+            let end = Math.max(grid1.y, grid2.y)
+            for (let y = start+1; y < end; ++y) {
+                if (isNaN(this.transformVectorToIndex(grid1.x, y))) {
+                    conn = false;
+                    break;
+                }
+            }
+        }
+
+        if (dir == 1) {
+            let start = Math.min(grid1.x, grid2.x);
+            let end = Math.max(grid1.x, grid2.x)
+            for (let x = start+1; x < end; ++x) {
+                if (isNaN(this.transformVectorToIndex(x, grid1.y))) {
+                    conn = false;
+                    break;
+                }
+            }
+        }
+
+        return conn;
+    }
+
+
     tampBoardToDirection(direction: Direction): MoveAnimationInfo[] {
         return this.#excuteActionGroupByDirection(direction, this.#tampSingleLineGrids.bind(this));
     }
 
-    #excuteActionGroupByDirection<T>(direction: Direction, action: (gridGroups: GameBoardGridModel[], reverse: boolean) => []): T[] {
+    #excuteActionGroupByDirection<T>(direction: Direction, action: (gridGroups: GameBoardGridModel[], reverse: boolean, dir: GridKeys) => []): T[] {
         let transformKey: GridKeys;
         let sortKey: GridKeys;
         if (this.#isHorizontalDirection(direction)) {
@@ -135,7 +192,7 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         let groups = groupBy(this.#gridModels, model => `${model[transformKey]}`);
         let gridGroups = Array.from(groups.values());
         gridGroups.forEach(grids => grids.sort((lhr, rhs) => lhr[sortKey] - rhs[sortKey]));
-        return gridGroups.reduce((infos, grids) => infos.concat(action(grids, reverse)), [] as T[]);
+        return gridGroups.reduce((infos, grids) => infos.concat(action(grids, reverse, sortKey)), [] as T[]);
     }
 
     #isHorizontalDirection(direction: Direction): boolean {
@@ -146,40 +203,97 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         return direction === Direction.Up || direction === Direction.Down;
     }
 
-    #tampSingleLineGrids(lineGrids: GameBoardGridModel[], reverse: boolean): MoveAnimationInfo[] {
+    #getPartitions(lineGrids: GameBoardGridModel[], dir: GridKeys): number[] {
+        let partitions: number[] = [];
+        if (dir == 'x') {
+            for (let index = 0; index < lineGrids.length; ++index) {
+                if (index != 0 && Math.abs(lineGrids[index].x - lineGrids[index - 1].x) != 1) {
+                    partitions.push(index);
+                }
+
+            }
+        }
+
+        if (dir == 'y') {
+            for (let index = 0; index < lineGrids.length; ++index) {
+                if (index != 0 && Math.abs(lineGrids[index].y - lineGrids[index - 1].y) != 1) {
+                    partitions.push(index);
+                }
+
+            }
+        }
+        return partitions;
+    }
+
+    #tampSingleLineGrids(lineGrids: GameBoardGridModel[], reverse: boolean, dir: GridKeys): MoveAnimationInfo[] {
         let infos: MoveAnimationInfo[] = [];
 
         let emptyIndex = -1;
         let grids = reverse ? lineGrids.reverse() : lineGrids;
-        grids.forEach((grid, index) => {
-            if (grid.isEmpty) {
-                if (emptyIndex === -1) {
-                    emptyIndex = index;
+        let par = this.#getPartitions(grids, dir);
+        let partitions: GameBoardGridModel[][]= [];
+        let nextStart = par[0];
+        let partition: GameBoardGridModel[]= [];
+        let startInd = 0;
+        for (let index=0; index < grids.length; ++index) {
+            if (index == nextStart && index != 0) {
+                partitions.push(partition);
+                partition = [];
+                partition.push(grids[index]);
+                startInd += 1;
+                if (startInd < par.length) {
+                    nextStart = par[startInd];
                 }
-            } else {
-                if (emptyIndex !== -1) {
-                    let emptyGrid = grids[emptyIndex];
-                    emptyGrid?.copyFrom(grid);
-                    grid.clear();
-                    ++emptyIndex;
-
-                    infos.push({
-                        from: {
-                            x: grid.x,
-                            y: grid.y
-                        },
-                        to: {
-                            x: emptyGrid.x,
-                            y: emptyGrid.y
-                        }
-                    });
+                else {
+                    nextStart = grids.length;
                 }
             }
-        });
+            else {
+                partition.push(grids[index]);
+            }
+            if (index == grids.length - 1) {
+                partitions.push(partition);
+            }
+        }
+
+        for (let ind = 0; ind < partitions.length; ++ind) {
+            grids = partitions[ind];
+
+            grids.forEach((grid, index) => {
+                if (grid.isEmpty) {
+                    if (emptyIndex === -1) {
+                        emptyIndex = index;
+                    }
+                } else {
+                    if (emptyIndex !== -1) {
+                        let emptyGrid = grids[emptyIndex];
+                        if (this.#checkConnectivity(emptyGrid, grid)) {
+
+                            emptyGrid?.copyFrom(grid);
+                            grid.clear();
+                            ++emptyIndex;
+
+                            infos.push({
+                                from: {
+                                    x: grid.x,
+                                    y: grid.y
+                                },
+                                to: {
+                                    x: emptyGrid.x,
+                                    y: emptyGrid.y
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+            emptyIndex = -1;
+        }
         reverse ? lineGrids.reverse() : undefined;
 
         return infos;
     }
+
 
     mergeBoardToDirection(direction: Direction): MergeAnimationInfo[] {
         return this.#excuteActionGroupByDirection(direction, this.#mergeSingleLineGrids.bind(this));
@@ -191,9 +305,8 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
      * @param reverse
      * @private
      */
-    #mergeSingleLineGrids(lineGrids: GameBoardGridModel[], reverse: boolean): MergeAnimationInfo[] {
+    #mergeSingleLineGrids(lineGrids: GameBoardGridModel[], reverse: boolean, dir: GridKeys): MergeAnimationInfo[] {
         let infos: MergeAnimationInfo[] = [];
-        //reverse是干什么的？
         let grids = reverse ? lineGrids.reverse() : lineGrids;
         let notEmptyIndex = -1;
         for (let index = 0; index < grids.length; ++index) {
@@ -201,14 +314,14 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
             if (grid.isEmpty) {
                 continue;
             }
-            //这里不应该是不相同的格子嘛？为什么会一样？
+
             if (notEmptyIndex === -1) {
                 notEmptyIndex = index;
                 continue;
             }
 
             let notEmptyGrid = grids[notEmptyIndex];
-            if (grid.point === notEmptyGrid.point) {
+            if (grid.point === notEmptyGrid.point && this.#checkConnectivity(notEmptyGrid, grid)) {
                 // 合并逻辑
                 notEmptyGrid.double();
                 grid.clear();
@@ -404,7 +517,11 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         while (power < totalNum) {
             power <<= 1; // 位运算左移一位相当于乘以 2
         }
-        this.#gridModels[randomIndex].point = power;
+        if (power == 1) {
+            this.#gridModels[randomIndex].clear();
+        } else {
+            this.#gridModels[randomIndex].point = power;
+        }
     }
 
     isInRange(x, y, randx, randy) {

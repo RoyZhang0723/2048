@@ -216,7 +216,7 @@
     "_enabled": true,
     "__prefab": null,
     "debug": false,
-    "boardSize": 4,
+    "boardSize": 7,
     "infinite": false,
     "animation": true,
     "aiStrategy": 0,

@@ -35,8 +35,8 @@ export class MainScene extends Component implements InputListener {
     @property({ displayName: '调试' })
     debug = false;
 
-    @property({ min: 2, max: 10, step: 1, slide: true, visible: false })
-    boardSize = 4;
+    @property({ min: 2, max: 10, step: 1, slide: true, visible: true, displayName: '尺寸' })
+    boardSize = 7;
 
     @property({ displayName: '无尽模式', tooltip: '无尽模式下，达到 2048 游戏不会结束' })
     infinite: boolean = false;

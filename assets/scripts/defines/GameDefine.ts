@@ -1,5 +1,8 @@
+//intervals between two grid
 export const GridInsets = 15;
-export const RoundRectRadius = 10;
+
+//square or round
+export const RoundRectRadius = 30;
 
 export enum Direction {
     None = 0,
