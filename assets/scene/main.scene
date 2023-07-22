@@ -1,7 +1,7 @@
 [
   {
     "__type__": "cc.SceneAsset",
-    "_name": "main",
+    "_name": "",
     "_objFlags": 0,
     "_native": "",
     "scene": {
@@ -216,7 +216,7 @@
     "_enabled": true,
     "__prefab": null,
     "debug": false,
-    "boardSize": 4,
+    "boardSize": 7,
     "infinite": false,
     "animation": true,
     "aiStrategy": 0,

@@ -1,5 +1,8 @@
+//intervals between two grid
 export const GridInsets = 15;
-export const RoundRectRadius = 10;
+
+//square or round
+export const RoundRectRadius = 30;
 
 export enum Direction {
     None = 0,
@@ -28,7 +31,8 @@ export function isValidDirection(dir: Direction): boolean {
     return dir !== Direction.None;
 }
 
-export const AnimationFrameInterval = 1 / 60;
+//time interval of animation
+export const AnimationFrameInterval = 1 / 20;
 
 export interface OverPrompt {
     prompt: string;

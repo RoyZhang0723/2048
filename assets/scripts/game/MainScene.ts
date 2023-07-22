@@ -35,8 +35,8 @@ export class MainScene extends Component implements InputListener {
     @property({ displayName: '调试' })
     debug = false;
 
-    @property({ min: 2, max: 10, step: 1, slide: true, visible: false })
-    boardSize = 4;
+    @property({ min: 2, max: 10, step: 1, slide: true, visible: true, displayName: '尺寸' })
+    boardSize = 7;
 
     @property({ displayName: '无尽模式', tooltip: '无尽模式下，达到 2048 游戏不会结束' })
     infinite: boolean = false;
@@ -82,8 +82,6 @@ export class MainScene extends Component implements InputListener {
     #overPromptText: RichText;
     #overPromptButton: ColorButton;
 
-    #powerMergeButton: ColorButton;
-    #changeOrderButton: ColorButton;
     #aiButton: ColorButton;
     #stopButton: ColorButton;
 
@@ -145,8 +143,6 @@ export class MainScene extends Component implements InputListener {
         this.#createBestScoreLabel();
         this.#createScoreLabel();
         this.#createAIButtons();
-        this.#createChangeOrderButton();
-        this.#createPowerMergeButton();
         this.#createRestartButton();
         this.#createCreditText();
 
@@ -208,7 +204,6 @@ export class MainScene extends Component implements InputListener {
         this.#inputManager?.subscribe(this);
     }
 
-    // 创建提示信息
     #createOverPrompt() {
         this.#overPrompt = new Node();
         this.#overPrompt.name = 'over_prompt';
@@ -280,7 +275,6 @@ export class MainScene extends Component implements InputListener {
         this.#board.configure(this.#boardContentSize.width);
     }
 
-    //创建logo文本
     #createLogoText() {
         let node = new Node();
         node.name = 'logo_text';
@@ -296,7 +290,6 @@ export class MainScene extends Component implements InputListener {
         node.position = v3(-this.#boardContentSize.width * 0.5 + 5, this.#boardContentSize.height * 0.5 + 50);
     }
 
-    //创建提示文本
     #createPromptText() {
         let node = new Node();
         node.name = 'prompt_text';
@@ -313,7 +306,6 @@ export class MainScene extends Component implements InputListener {
         node.position = v3(-this.#boardContentSize.width * 0.5 + 5, this.#boardContentSize.height * 0.5 + 5);
     }
 
-    //创建分数label
     #createScoreLabel() {
         let score = GameScoreNode.new();
         score.node.name = 'score';
@@ -344,61 +336,6 @@ export class MainScene extends Component implements InputListener {
         });
     }
 
-    //code by RoyZhang
-    #createPowerMergeButton() {
-        let size: Readonly<Size> = new Size(150,80);
-        let powerMergeButton = ColorButton.new();
-        powerMergeButton.node.name = 'change_order_button';
-        powerMergeButton.node.setParent(this.node);
-        let changeOrderBtnTransform = powerMergeButton.getComponent(UITransform);
-        changeOrderBtnTransform.contentSize = size;
-        changeOrderBtnTransform.node.position = v3(this.#boardContentSize.width * 0.5 -590, this.#boardContentSize.height * 0.5 + 50);
-
-        powerMergeButton.graphics.color = new Color(ButtonColor);
-        powerMergeButton.graphics.radius = RoundRectRadius;
-
-        powerMergeButton.richText.string = 'power-merge';
-        powerMergeButton.richText.fontSize = 30;
-        this.#powerMergeButton = powerMergeButton;
-        powerMergeButton.node.on(Button.EventType.CLICK, _=> {
-            this.#mergeByRandom();
-        })
-    }
-
-    #mergeByRandom() {
-        this.#board.slideMerge();
-    }
-    /**
-     * 创建改变排序按钮
-     * @private
-     */
-    #createChangeOrderButton() {
-        let size: Readonly<Size> = new Size(150,80);
-        let changeOrderBtn = ColorButton.new();
-        changeOrderBtn.node.name = 'change_order_button';
-        changeOrderBtn.node.setParent(this.node);
-        let changeOrderBtnTransform = changeOrderBtn.getComponent(UITransform);
-        changeOrderBtnTransform.contentSize = size;
-        changeOrderBtnTransform.node.position = v3(this.#boardContentSize.width * 0.5 -245, this.#boardContentSize.height * 0.5 + 100);
-
-        changeOrderBtn.graphics.color = new Color(ButtonColor);
-        changeOrderBtn.graphics.radius = RoundRectRadius;
-
-        changeOrderBtn.richText.string = 'change-order';
-        changeOrderBtn.richText.fontSize = 30;
-        this.#changeOrderButton = changeOrderBtn;
-        changeOrderBtn.node.on(Button.EventType.CLICK, _=> {
-            this.#changeOrder();
-        })
-    }
-
-    #changeOrder() {
-        this.#board.slideChange();
-    }
-    /**
-     * 创建AI button
-     * @private
-     */
     #createAIButtons() {
         let size: Readonly<Size> = new Size(150, 80);
 

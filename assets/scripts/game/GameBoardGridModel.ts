@@ -1,9 +1,6 @@
 import { Rect } from "cc";
 import IClone from "../interfaces/Clone";
 
-/**
- * 这个类是关于每一个显示出来的数字的
- */
 export default class GameBoardGridModel implements IClone<GameBoardGridModel> {
     // 列 x
     x: number = 0;

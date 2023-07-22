@@ -103,42 +103,6 @@ export class GameBoardView extends Component {
         return pointGrid;
     }
 
-    /**
-     * code by RoyZhang
-     * 负责合成方块的函数（技能卡）
-     *
-     */
-    async slideMerge() {
-        this.gameData.boardModel.mergeArrayByRandom();
-        this.#violentUpadte();
-        return new Promise<void>(resolve => {
-            this.scheduler.nextFrameCall(() => {
-                resolve();
-            });
-        });
-    }
-
-    /**
-     *
-     * code by RoyZhang
-     * 负责随机生成的函数（技能卡）
-     *
-     */
-    async slideChange() {
-        this.gameData.boardModel.changeTheOrder();
-        this.#violentUpadte();
-        return new Promise<void>(resolve => {
-            this.scheduler.nextFrameCall(() => {
-                resolve();
-            });
-        });
-    }
-
-    /**
-     * 负责完成方块的合并（核心函数之一）
-     * @param direction
-     * @param animating
-     */
     async slideToDirection(direction: Direction, animating: boolean = true) {
         if (!this.gameData.boardModel.canMoveToDirection(direction)) {
             return Promise.resolve();
