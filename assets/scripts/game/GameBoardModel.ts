@@ -1,9 +1,9 @@
-import { Size, v2, Vec2 } from "cc";
-import { Direction } from "../defines/GameDefine";
+import {Size, v2, Vec2} from "cc";
+import {Direction} from "../defines/GameDefine";
 import IClone from "../interfaces/Clone";
-import { BaseModel } from "../utils/BaseModel";
-import { groupBy, range } from "../utils/lodash";
-import { MergeAnimationInfo, MoveAnimationInfo } from "./GameAnimationInfo";
+import {BaseModel} from "../utils/BaseModel";
+import {groupBy, range, shuffle} from "../utils/lodash";
+import {MergeAnimationInfo, MoveAnimationInfo} from "./GameAnimationInfo";
 import GameBoardGridModel from "./GameBoardGridModel";
 import GameLogicGenerator from "./GameLogicGenerator";
 
@@ -185,8 +185,15 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
         return this.#excuteActionGroupByDirection(direction, this.#mergeSingleLineGrids.bind(this));
     }
 
+    /**
+     * 合并单行单元格，非常重要的函数。
+     * @param lineGrids
+     * @param reverse
+     * @private
+     */
     #mergeSingleLineGrids(lineGrids: GameBoardGridModel[], reverse: boolean): MergeAnimationInfo[] {
         let infos: MergeAnimationInfo[] = [];
+        //reverse是干什么的？
         let grids = reverse ? lineGrids.reverse() : lineGrids;
         let notEmptyIndex = -1;
         for (let index = 0; index < grids.length; ++index) {
@@ -194,7 +201,7 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
             if (grid.isEmpty) {
                 continue;
             }
-
+            //这里不应该是不相同的格子嘛？为什么会一样？
             if (notEmptyIndex === -1) {
                 notEmptyIndex = index;
                 continue;
@@ -278,6 +285,7 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
 
     // 二维数组岛屿
     #visited: Set<string> = new Set();
+
     get islands(): number {
         this.#visited.clear();
         let islands = 0;
@@ -340,7 +348,7 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
     // 单调性
     get monotonicity(): number {
         let iterator = (vectorTransformer: (index: number, counter: number) => Vec2,
-            callbackFn: (currentValue: number, nextValue: number) => void) => {
+                        callbackFn: (currentValue: number, nextValue: number) => void) => {
             for (let i = 0; i < this.#size; ++i) {
                 let current = 0;
                 let next = current + 1;
@@ -374,5 +382,62 @@ export class GameBoardModel extends BaseModel implements IClone<GameBoardModel> 
 
         return Math.max(results[0], results[1]) + Math.max(results[2], results[3]);
     }
+
     // #endregion
+
+    //cody by RoyZhang
+
+    mergeArrayByRandom() {
+        let randomIndex = Math.floor(Math.random() * this.#gridModels.length);
+        let randomElement = this.#gridModels[randomIndex];
+        let randomX = randomElement.x;
+        let randomY = randomElement.y;
+        let randomPoint = randomElement.point;
+        let totalNum = 0;
+        for (let i = 0; i < this.#gridModels.length; i++) {
+            if (this.isInRange(this.#gridModels[i].x, this.#gridModels[i].y, randomX, randomY)) {
+                totalNum = totalNum + this.#gridModels[i].point;
+                this.#gridModels[i].clear();
+            }
+        }
+        let power = 1;
+        while (power < totalNum) {
+            power <<= 1; // 位运算左移一位相当于乘以 2
+        }
+        this.#gridModels[randomIndex].point = power;
+    }
+
+    isInRange(x, y, randx, randy) {
+        if (x >= randx - 1 && x <= randx + 1 && y <= randy + 1 && y >= randy - 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    shuffleArray(array) {
+        let currentIndex = array.length;
+        let temporaryValue, randomIndex;
+        // While there remain elements to shuffle...
+        while (currentIndex !== 0) {
+            // Pick a remaining element...
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            // And swap it with the current element.
+            temporaryValue = array[currentIndex];
+            array[currentIndex] = array[randomIndex];
+            array[randomIndex] = temporaryValue;
+        }
+        return array;
+    }
+    changeTheOrder(): void {
+        var pointArray = new Array();
+        for (let i = 0; i < this.#gridModels.length; i++) {
+            pointArray[i] = this.#gridModels[i].point;
+        }
+        var changePointArray = this.shuffleArray(pointArray);
+        for (let j = 0; j < this.#gridModels.length; j++) {
+            this.#gridModels[j].point = changePointArray[j];
+        }
+    }
 }
